@@ -52,12 +52,13 @@ class GeigerFS(LoggingMixIn, Operations):
         return ['.', '..'] + [x[1:] for x in self.files if x != '/']
 
     def open(self, path, flags):
-        self.timesfhs[path] = open(self.fileName)
+        self.timesfhs[path] = open(self.fileName, 'r+')
         return Operations.open(self, path, flags)
 
     def doReadCpm(self, path, length, offset, fh):
         ''' returns the count of events detected per minute '''
-        cpm = 0         # calculated counts per minute
+        cpm = 0         # final calculated counts per minute
+        accum_cpm = 0   # accumulating counts per minute
         last_ts = 0.0   # the last time stamp in the time stamps file
         tfh = self.timesfhs[path]   # get the file handle to the times file for this instance
         times_offset = 1024     # initial offset from for reading from the end of the file
@@ -85,12 +86,14 @@ class GeigerFS(LoggingMixIn, Operations):
                     else:
                         time_diff = last_ts - float(ts)
                     if (time_diff < 60.0):
-                        cpm += 1
+                        accum_cpm += 1
                     else:
                         break   # go until we reach a minute
                 except ValueError:
                     logging.exception('')
             times_offset += 1024
+            cpm = accum_cpm
+            accum_cpm = 0
         self.data[path] = str( cpm ) + '\n'
         return self.data[path][offset:offset + length]
 
