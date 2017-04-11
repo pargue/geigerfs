@@ -5,6 +5,8 @@ from __future__ import with_statement, absolute_import
 import time
 import logging
 import os
+import math
+import random
 
 from stat import S_IFDIR, S_IFREG, S_IFCHR
 from errno import ENOENT
@@ -12,7 +14,7 @@ from sys import argv, exit
 from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
 
 class GeigerFS(LoggingMixIn, Operations):
-    def __init__(self, harvestFile='times.txt'):
+    def __init__(self, harvestFile='times.txt', pseudoFile='pseudo.txt'):
         self.files = {} # file stats for each vfile
         self.data = {}  # data str for each vfile
         self.reads = {} # handlers for the read operation for each vfile
@@ -32,6 +34,7 @@ class GeigerFS(LoggingMixIn, Operations):
         self.reads['/cpm'] = self.doReadCpm
         self.reads['/random'] = self.doReadRandom
         self.fileName = harvestFile
+	self.pseudoFN = pseudoFile
 
     # Filesystem methods
     # ==================
@@ -52,7 +55,7 @@ class GeigerFS(LoggingMixIn, Operations):
         return ['.', '..'] + [x[1:] for x in self.files if x != '/']
 
     def open(self, path, flags):
-        self.timesfhs[path] = open(self.fileName)
+        self.timesfhs[path] = open(self.fileName, 'r+')
         return Operations.open(self, path, flags)
 
     def doReadCpm(self, path, length, offset, fh):
@@ -93,6 +96,29 @@ class GeigerFS(LoggingMixIn, Operations):
             times_offset += 1024
         self.data[path] = str( cpm ) + '\n'
         return self.data[path][offset:offset + length]
+
+    def doPseudoRead(self, path, length, offset):
+	''' ...generates random bytes when times.txt is empty... '''
+
+	# get 4 byte seed from pseudo file	
+	tfh = open(self.pseudoFN, 'r+')
+	seed = tfh.read(4)  
+	random.seed(seed)
+
+	# write pseudorandom bytes to the path file  
+	for i in range(length):
+		try:			
+			number = int(math.floor((random.random() * 256)))   # convert random
+			self.data[path].append(number)                      # float to byte
+		except: pass
+	
+	# write new 4 byte seed back to the pseudo file
+	f.seek()   # go to pseudo file beginning
+	for i in range(4):
+		number = int(math.floor((random.random() * 256))) 
+		f.write(number)
+	tfh.close()
+        return
 
     def doReadRandom(self, path, length, offset, fh):
         return self.data[path][offset:offset + length]
