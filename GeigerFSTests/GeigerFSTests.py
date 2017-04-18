@@ -4,7 +4,7 @@ Created on Mar 13, 2017
 '''
 import unittest
 import sys
-from mock import mock_open
+# from mock import mock_open
 sys.path.append('..')
 import logging
 from geigerfs import GeigerFS
@@ -79,14 +79,34 @@ class GeigerFSTest(unittest.TestCase):
         self.assertEqual(cpm, '60\n')
         os.remove('test.txt')
 
+    def test_pseudoread_new_seed(self):
+        self.make_test_pseudo_file()
+        self.root_gfs.doPseudoRead("/random", 256, 0)
+        f = open('pseudo.txt')
+        seed = f.readline()
+        self.assertEqual(len(seed), 4)
+        f.close()
+        os.remove('pseudo.txt')
+
+    def test_pseudoread_bytes_returned(self):
+        self.make_test_pseudo_file()
+        self.root_gfs.doPseudoRead("/random", 10, 0)
+        self.assertEqual(len(self.root_gfs.data["/random"]), 20) 
+        os.remove ('pseudo.txt')
+
 
     def setUp(self):
-        self.root_gfs = GeigerFS('test.txt')
+        self.root_gfs = GeigerFS('test.txt', 'pseudo.txt')
 
 
     def tearDown(self):
         pass
 
+    def make_test_pseudo_file(self):
+        my_text = '1234\n'   # add 4 bytes
+        f = open('pseudo.txt', 'w')
+        f.write(my_text)
+        f.close()
 
     def make_test_file(self, interval):
         t = time.time()
