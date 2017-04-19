@@ -82,7 +82,7 @@ class GeigerFSTest(unittest.TestCase):
 
     def test_pseudoread_new_seed(self):
         self.make_test_pseudo_file()
-        self.root_gfs.doPseudoRead("/random", 256, 0)
+        self.root_gfs.doPseudoRead("/random", 10, 0)
         f = open('pseudo.txt')
         seed = f.readline()
         self.assertEqual(len(seed), 4)
@@ -117,7 +117,7 @@ class GeigerFSTest(unittest.TestCase):
 
 
     def make_test_pseudo_file(self):
-        my_text = '1234\n'   # add 4 bytes
+        my_text = '1234'   # add 4 bytes
         f = open('pseudo.txt', 'w')
         f.write(my_text)
         f.close()

@@ -103,25 +103,25 @@ class GeigerFS(LoggingMixIn, Operations):
 
     def doPseudoRead(self, path, length, offset):
         ''' ...generates random bytes when times.txt is empty... '''
-        # get 4 byte seed from pseudo file
+        # get 4 byte seed from pseudo file	
         tfh = open(self.pseudoFN, 'r+')
-        seed = tfh.read(4)
+        seed = tfh.read(4)  
         random.seed(seed)
-
-        # write pseudorandom bytes to the path fil
+    
+        # write pseudorandom bytes to the path file  
         for i in range(length):
-            try:
-                number = int(math.floor(random.random() * 256))   # convert random
-                self.data[path].append(number + '\n')             # float to byte
+            try:			
+                number = chr(int(math.floor(random.random() * 256)))   # convert random
+                self.data[path] += number + '\n'                       # float to byte
             except: pass
 
         # write new 4 byte seed back to the pseudo file
         tfh.seek(0)   # go to pseudo file beginning
         for i in range(4):
-            number = int(math.floor(random.random() * 256))
-            tfh.write(str(number))
+            number = chr(int(math.floor(random.random() * 256))) 
+            tfh.write(number)
         tfh.close()
-        return self.data[path][offset:offset + length]
+        return
 
     def doReadRandom(self, path, length, offset, fh):
         lines_to_read = (length * 8) + 1
