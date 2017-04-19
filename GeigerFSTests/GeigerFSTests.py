@@ -79,6 +79,7 @@ class GeigerFSTest(unittest.TestCase):
         self.assertEqual(cpm, '60\n')
         os.remove('test.txt')
 
+
     def test_pseudoread_new_seed(self):
         self.make_test_pseudo_file()
         self.root_gfs.doPseudoRead("/random", 256, 0)
@@ -88,11 +89,23 @@ class GeigerFSTest(unittest.TestCase):
         f.close()
         os.remove('pseudo.txt')
 
+
     def test_pseudoread_bytes_returned(self):
         self.make_test_pseudo_file()
         self.root_gfs.doPseudoRead("/random", 10, 0)
-        self.assertEqual(len(self.root_gfs.data["/random"]), 20) 
+        self.assertEqual(len(self.root_gfs.data["/random"]), 20)
         os.remove ('pseudo.txt')
+
+
+    def test_random_read(self):
+        self.make_random_read_file(200)
+        fh = self.root_gfs.open("/random", 0)
+        byte = self.root_gfs.doReadRandom("/random", 1, 0, fh)
+        self.assertEqual(len(byte), 1)
+        arr = list(byte)
+        print byte, arr
+        self.assertEqual('\0',arr[0])
+        os.remove('test.txt')
 
 
     def setUp(self):
@@ -102,11 +115,13 @@ class GeigerFSTest(unittest.TestCase):
     def tearDown(self):
         pass
 
+
     def make_test_pseudo_file(self):
         my_text = '1234\n'   # add 4 bytes
         f = open('pseudo.txt', 'w')
         f.write(my_text)
         f.close()
+
 
     def make_test_file(self, interval):
         t = time.time()
@@ -124,6 +139,19 @@ class GeigerFSTest(unittest.TestCase):
         my_text = str(t) + '\n'
         for i in range(int_count):
             my_text += str(t + i) + '\n'
+        f = open('test.txt', 'w')
+        f.write(my_text)
+        f.close()
+
+
+    def make_random_read_file(self, interval): #intervals would be in ascending order
+        t = time.time()
+        my_text = str(t) + '\n'
+        val = 1
+        for i in range(interval):
+            t += val
+            my_text += str(t) + '\n'
+            val += 1
         f = open('test.txt', 'w')
         f.write(my_text)
         f.close()

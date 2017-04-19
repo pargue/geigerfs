@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python
 
 from __future__ import with_statement, absolute_import
@@ -13,6 +12,7 @@ from stat import S_IFDIR, S_IFREG, S_IFCHR
 from errno import ENOENT
 from sys import argv, exit
 from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
+from bitarray import bitarray
 
 class GeigerFS(LoggingMixIn, Operations):
     def __init__(self, harvestFile='times.txt', pseudoFile='pseudo.txt'):
@@ -35,7 +35,7 @@ class GeigerFS(LoggingMixIn, Operations):
         self.reads['/cpm'] = self.doReadCpm
         self.reads['/random'] = self.doReadRandom
         self.fileName = harvestFile
-	self.pseudoFN = pseudoFile
+        self.pseudoFN = pseudoFile
 
     # Filesystem methods
     # ==================
@@ -102,29 +102,54 @@ class GeigerFS(LoggingMixIn, Operations):
         return self.data[path][offset:offset + length]
 
     def doPseudoRead(self, path, length, offset):
-	''' ...generates random bytes when times.txt is empty... '''
-	# get 4 byte seed from pseudo file	
-	tfh = open(self.pseudoFN, 'r+')
-	seed = tfh.read(4)  
-	random.seed(seed)
+        ''' ...generates random bytes when times.txt is empty... '''
+        # get 4 byte seed from pseudo file
+        tfh = open(self.pseudoFN, 'r+')
+        seed = tfh.read(4)
+        random.seed(seed)
 
-	# write pseudorandom bytes to the path file  
-	for i in range(length):
-		try:			
-			number = int(math.floor(random.random() * 256))   # convert random
-			self.data[path].append(number + '\n')             # float to byte
-		except: pass
-	
-	# write new 4 byte seed back to the pseudo file
-	tfh.seek(0)   # go to pseudo file beginning
-	for i in range(4):
-		number = int(math.floor(random.random() * 256)) 
-		tfh.write(str(number))
-	tfh.close()
-        return
+        # write pseudorandom bytes to the path fil
+        for i in range(length):
+            try:
+                number = int(math.floor(random.random() * 256))   # convert random
+                self.data[path].append(number + '\n')             # float to byte
+            except: pass
+
+        # write new 4 byte seed back to the pseudo file
+        tfh.seek(0)   # go to pseudo file beginning
+        for i in range(4):
+            number = int(math.floor(random.random() * 256))
+            tfh.write(str(number))
+        tfh.close()
+        return self.data[path][offset:offset + length]
 
     def doReadRandom(self, path, length, offset, fh):
-        return self.data[path][offset:offset + length]
+        lines_to_read = (length * 8) + 1
+        a = bitarray()              # create empty bitarray
+        tfh = self.timesfhs[path]   # get the file handle to the times file for this instance
+        num_lines = sum(1 for line in tfh)  # count lines
+        if(num_lines < lines_to_read):
+            return self.doPseudoRead(path, length, offset)
+        else:
+            start = 0
+            end = 3
+            tfh.seek(0)
+            lines = tfh.readlines()
+            for line in lines:
+                if (lines_to_read <= 1):
+                    break
+                tstamps = lines[start:end]  #read first 3 lines into array tstamps
+                interval_one = float(tstamps[1])-float(tstamps[0])  #calculate time stamp diffs
+                interval_two = float(tstamps[2])-float(tstamps[1])
+                if(interval_one < interval_two):
+                    a.append(False)                             # i think both boolean  or binary values work here for bitarrays
+                else:
+                    a.append(True)
+                start += 1                # increment to get new interval range in next iteration eg. [2:5] for lines 3,4,5
+                end += 1
+                lines_to_read -= 1
+            b = a.tobytes()
+            return b
 
     # Disable unused operations:
     access = None
