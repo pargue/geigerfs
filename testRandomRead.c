@@ -25,23 +25,22 @@ int main(void)
   int size = 256;
  
   // open a file for read with a provided path.
-    fp = fopen("//dev//random", "r");  
-  //fp = fopen("//temp.txt", "r");  
+  fp = fopen("./random", "r");
   
   printf("\n\nReading %d bytes from file...\n\n", size); 
   readNumOfBytes(fp, size, p_buffer);
   
-  size = 512;
+  size = 4;
 
   printf("\n\nReading %d bytes from file...\n\n", size); 
   readNumOfBytes(fp, size, p_buffer);
 
-  size = 1024;
+  size = 16;
 
   printf("\n\nReading %d bytes from file...\n\n", size); 
   readNumOfBytes(fp, size, p_buffer);
 
-  size = 4096;
+  size = 32;
 
   printf("\n\nReading %d bytes from file...\n\n", size); 
   readNumOfBytes(fp, size, p_buffer);  
