@@ -7,10 +7,12 @@ import logging
 import os
 import math
 import random
+import fileinput
 
+from collections import deque
 from stat import S_IFDIR, S_IFREG, S_IFCHR
 from errno import ENOENT
-from sys import argv, exit
+from sys import argv, exit, stdout
 from fuse import FUSE, FuseOSError, Operations, LoggingMixIn
 from bitarray import bitarray
 
@@ -27,14 +29,15 @@ class GeigerFS(LoggingMixIn, Operations):
         self.files['/'] = dict(st_mode=(S_IFDIR | 0o755), st_ctime=now,
                                st_mtime=now, st_atime=now, st_nlink=2)
         self.files['/random'] = dict(st_mode=(S_IFREG | 0o444), st_ctime=now,
-                               st_mtime=now, st_atime=now, st_nlink=1)
+                               st_mtime=now, st_atime=now, st_nlink=1, st_size=4096)
         self.files['/cpm'] = dict(st_mode=(S_IFREG | 0o444), st_ctime=now,
                                st_mtime=now, st_atime=now, st_nlink=1,
-                               st_size=3)
+                               st_size=4096)
 
         self.reads['/cpm'] = self.doReadCpm
         self.reads['/random'] = self.doReadRandom
         self.fileName = harvestFile
+        self.h_fn_bak = harvestFile + ".bak"
         self.pseudoFN = pseudoFile
 
     # Filesystem methods
@@ -103,14 +106,14 @@ class GeigerFS(LoggingMixIn, Operations):
 
     def doPseudoRead(self, path, length, offset):
         ''' ...generates random bytes when times.txt is empty... '''
-        # get 4 byte seed from pseudo file	
+        # get 4 byte seed from pseudo file
         tfh = open(self.pseudoFN, 'r+')
-        seed = tfh.read(4)  
+        seed = tfh.read(4)
         random.seed(seed)
-    
-        # write pseudorandom bytes to the path file  
+
+        # write pseudo random bytes to the path file
         for i in range(length):
-            try:			
+            try:
                 number = chr(int(math.floor(random.random() * 256)))   # convert random
                 self.data[path] += number + '\n'                       # float to byte
             except: pass
@@ -118,38 +121,59 @@ class GeigerFS(LoggingMixIn, Operations):
         # write new 4 byte seed back to the pseudo file
         tfh.seek(0)   # go to pseudo file beginning
         for i in range(4):
-            number = chr(int(math.floor(random.random() * 256))) 
+            number = chr(int(math.floor(random.random() * 256)))
             tfh.write(number)
         tfh.close()
         return
 
     def doReadRandom(self, path, length, offset, fh):
         lines_to_read = (length * 8) + 1
+        i = lines_to_read
         a = bitarray()              # create empty bitarray
+        tstamps = deque()
+        h_bak = open(self.h_fn_bak, 'w')
         tfh = self.timesfhs[path]   # get the file handle to the times file for this instance
-        num_lines = sum(1 for line in tfh)  # count lines
-        if(num_lines < lines_to_read):
-            return self.doPseudoRead(path, length, offset)
-        else:
-            start = 0
-            end = 3
-            tfh.seek(0)
-            lines = tfh.readlines()
-            for line in lines:
-                if (lines_to_read <= 1):
-                    break
-                tstamps = lines[start:end]  #read first 3 lines into array tstamps
+        tfh.seek(0)                 # reseek if called before
+        for l in range(3):
+            line = tfh.readline()
+            if not line:
+                return self.doPseudoRead(path, length, offset)
+            tstamps.append(line)
+        while (line):
+            if i <= 1:
+                h_bak.write(line)   # done reading timestamps for random number, write the rest of the lines
+                line = tfh.readline()
+            else:
                 interval_one = float(tstamps[1])-float(tstamps[0])  #calculate time stamp diffs
                 interval_two = float(tstamps[2])-float(tstamps[1])
                 if(interval_one < interval_two):
                     a.append(False)                             # i think both boolean  or binary values work here for bitarrays
                 else:
                     a.append(True)
-                start += 1                # increment to get new interval range in next iteration eg. [2:5] for lines 3,4,5
-                end += 1
-                lines_to_read -= 1
-            b = a.tobytes()
-            return b
+                i -= 1
+                tstamps.rotate(-1)
+                line = tfh.readline()
+                if line:
+                    tstamps[2] = line
+
+        if i > 1:
+            fsize = 0
+            try:
+                fsize = os.path.getsize(self.pseudoFN)
+            except OSError as detail:
+                logging.error(detail)
+            if fsize == 0:
+                return ""
+            elif fsize < 4:
+                with open(self.pseudoFN, 'a') as pfh:
+                    pfh.write(a.tobytes()[:fsize-4])
+            return self.doPseudoRead(path, length, offset)
+        else:
+            h_bak.close()
+            tfh.close()
+            os.rename(self.h_fn_bak, self.fileName)
+            self.timesfhs[path] = open(self.fileName, 'r+')
+            return a.tobytes()
 
     # Disable unused operations:
     access = None

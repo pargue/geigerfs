@@ -98,14 +98,31 @@ class GeigerFSTest(unittest.TestCase):
 
 
     def test_random_read(self):
-        self.make_random_read_file(200)
+        self.make_random_read_file(400)
         fh = self.root_gfs.open("/random", 0)
-        byte = self.root_gfs.doReadRandom("/random", 1, 0, fh)
-        self.assertEqual(len(byte), 1)
-        arr = list(byte)
-        print byte, arr
-        self.assertEqual('\0',arr[0])
+        test_val = []
+        for i in range(1, 10):
+            byte = self.root_gfs.doReadRandom("/random", i, 0, fh)
+            self.assertEqual(len(byte), i)
+            arr = list(byte)
+            test_val.append('\0')
+            self.assertEqual(test_val,arr)
         os.remove('test.txt')
+
+    @unittest.skip("not working yet")
+    def test_random_read_calls_pseudo(self):
+        self.make_random_read_file(33)
+        self.make_test_pseudo_file()
+        fh = self.root_gfs.open("/random", 0)
+        test_val = []
+        for i in range(1, 10):
+            byte = self.root_gfs.doReadRandom("/random", i, 0, fh)
+            self.assertEqual(len(byte), i)
+            arr = list(byte)
+            test_val.append('\0')
+            self.assertEqual(test_val,arr)
+        os.remove('test.txt')
+        os.remove ('pseudo.txt')
 
 
     def setUp(self):
