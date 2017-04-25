@@ -137,7 +137,7 @@ class GeigerFS(LoggingMixIn, Operations):
             bits are generated pseudorandomly '''
         line = ""
         lines_to_read = (length * 8) + 1    # lines to read
-        i = lines_to_read                   # number of requested bits
+        i = lines_to_read
         a = bitarray()                      # create empty bitarray to hold generated bits
         tstamps = deque()                   # create a deque to hold timestamps
         h_bak = open(self.h_fn_bak, 'w')    # unused timestamps from times.txt are written here
