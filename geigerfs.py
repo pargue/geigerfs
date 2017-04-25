@@ -110,7 +110,7 @@ class GeigerFS(LoggingMixIn, Operations):
         return self.data[path][offset:offset + length]
 
     def doPseudoRead(self, path, length, offset):
-        ''' Generates random bytes when times.txt is empty '''
+        ''' Generates random bytes when times.txt is empty using a 4 byte seed '''
         # get 4 byte seed from pseudo file
         tfh = open(self.pseudoFN, 'r+')
         seed = tfh.read(4)
@@ -123,7 +123,6 @@ class GeigerFS(LoggingMixIn, Operations):
                 number = chr(int(math.floor(random.random() * 256)))   # convert random
                 self.data[path] += number                              # float to byte
             except: pass
-
         # write new 4 byte seed back to the pseudo file
         tfh.seek(0)   # go to pseudo file beginning
         for i in range(4):
@@ -133,12 +132,12 @@ class GeigerFS(LoggingMixIn, Operations):
         return self.data[path]
 
     def doReadRandom(self, path, length, offset, fh):
-        ''' Reads bytes from times.txt, converts inputed timestamps into the requested number of bits,
-            and returns the random bits. If times.txt doesn't have enough timestamps, uses a file of 
-            pseudorandomly generated timestamps to return bits '''
+        ''' Reads timestamps from times.txt, converts them into the requested number of bits,
+            and returns the bits. If times.txt doesn't have enough timestamps, the requested
+            bits are generated pseudorandomly '''
         line = ""
         lines_to_read = (length * 8) + 1    # lines to read
-        i = lines_to_read
+        i = lines_to_read                   # number of requested bits
         a = bitarray()                      # create empty bitarray to hold generated bits
         tstamps = deque()                   # create a deque to hold timestamps
         h_bak = open(self.h_fn_bak, 'w')    # unused timestamps from times.txt are written here
@@ -149,7 +148,7 @@ class GeigerFS(LoggingMixIn, Operations):
         for l in range(3):
             line = tfh.readline()
             if not line:
-                return self.doPseudoRead(path, length, offset)  # use pseudorandom timestamps if not enough
+                return self.doPseudoRead(path, length, offset)  # get pseudorandom bytes if not enough timestamps
             tstamps.append(line)
         # generate the requested number of bits 
         while (line):
@@ -169,7 +168,7 @@ class GeigerFS(LoggingMixIn, Operations):
                 line = tfh.readline()   # replace timestamp at end with a new one from times.txt
                 if line:
                     tstamps[2] = line
-        # if not enough timestamps in times.txt, get random bits from pseudo.txt
+        # if not enough timestamps in times.txt, generate pseudorandom bytes
         if i > 1:
             fsize = 0
             try:
@@ -180,7 +179,7 @@ class GeigerFS(LoggingMixIn, Operations):
                 with open(self.pseudoFN, 'a') as pfh:
                     pfh.write(a.tobytes()[:4-fsize])    # make the seed 4 bytes
             return self.doPseudoRead(path, length, offset)
-        else:   # replace times.txt and return requested bits 
+        else:   # replace times.txt with h_fn_bak and return requested bits 
             h_bak.flush()
             h_bak.close()
             tfh.flush()
