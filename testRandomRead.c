@@ -22,25 +22,25 @@ int main(void)
 
   FILE *fp; // pointer to a file.
   unsigned char *p_buffer;               // an arrary for the stirng format.
-  int size = 256;
+  int size = 1;
  
   // open a file for read with a provided path.
-  fp = fopen("./random", "r");
+  fp = fopen("./mnt/random", "r");
   
   printf("\n\nReading %d bytes from file...\n\n", size); 
   readNumOfBytes(fp, size, p_buffer);
   
-  size = 4;
+  size = 1;
 
   printf("\n\nReading %d bytes from file...\n\n", size); 
   readNumOfBytes(fp, size, p_buffer);
 
-  size = 16;
+  size = 1;
 
   printf("\n\nReading %d bytes from file...\n\n", size); 
   readNumOfBytes(fp, size, p_buffer);
 
-  size = 32;
+  size = 1;
 
   printf("\n\nReading %d bytes from file...\n\n", size); 
   readNumOfBytes(fp, size, p_buffer);  
